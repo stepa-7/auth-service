@@ -12,8 +12,23 @@
     <form th:action="@{/auth/logout}" method="post" style="display:inline;">
       <button type="submit">Выйти</button>
     </form>
+    <button onclick="refreshToken()">Обновить токен</button>
   </nav>
   <hr/>
+  <script>
+    async function refreshToken() {
+      const response = await fetch('/auth/refresh', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      if (response.ok) {
+        alert('Токен обновлён');
+      } else {
+        alert('Не удалось обновить токен, нужно авторизоваться заново');
+        window.location.href = '/login';
+      }
+    }
+  </script>
 </div>
 </body>
 </html>
