@@ -5,6 +5,8 @@ import com.stepa7.authservice.request.SignupRequest;
 import com.stepa7.authservice.security.JwtCore;
 import com.stepa7.authservice.user.User;
 import com.stepa7.authservice.user.UserRepository;
+import com.stepa7.authservice.user.UserRole;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,12 +16,14 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.Cookie;
 
-@RestController
+
+import java.util.Set;
+
+@Controller
 @RequestMapping("/auth")
 public class SecurityController {
     private UserRepository userRepository;
@@ -36,35 +40,59 @@ public class SecurityController {
     }
 
     @PostMapping("/signup")
-    ResponseEntity<?> signup(@RequestBody SignupRequest signupRequest) {
+    ResponseEntity<?> signup(@ModelAttribute SignupRequest signupRequest) {
         if (userRepository.existsUserByLogin(signupRequest.getLogin())) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Choose different login");
         }
-        if (userRepository.existsUserByMail(signupRequest.getMail())) {
+        if (userRepository.existsUserByMail(signupRequest.getEmail())) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Choose different login");
         }
         String hashed = passwordEncoder.encode(signupRequest.getPassword());
         User user = new User();
         user.setLogin(signupRequest.getLogin());
-        user.setMail(signupRequest.getMail());
+        user.setMail(signupRequest.getEmail());
         user.setPassword(hashed);
+        if (signupRequest.getRoles() == null || signupRequest.getRoles().isEmpty()) {
+            user.setRole(Set.of(UserRole.GUEST));
+        } else {
+            user.setRole(signupRequest.getRoles());
+        }
         userRepository.save(user);
         return ResponseEntity.ok("Success");
     }
 
     @PostMapping("/signin")
-    ResponseEntity<?> signin(@RequestBody SigninRequest signinRequest) {
+    public String signin(@ModelAttribute SigninRequest signinRequest, HttpServletResponse response) {
         Authentication authentication = null;
         try {
             authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
                     signinRequest.getLogin(),
                     signinRequest.getPassword()));
+
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            String jwt = jwtCore.generateToken(authentication);
+
+            Cookie jwtCookie = new Cookie("JWT", jwt);
+            jwtCookie.setHttpOnly(true);
+            jwtCookie.setPath("/");
+            jwtCookie.setMaxAge(120);
+            response.addCookie(jwtCookie);
+
+            return "redirect:/profile";
         } catch (BadCredentialsException e) {
-            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+            return "redirect:/login?error=true";
         }
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        String jwt = jwtCore.generateToken(authentication);
-        return ResponseEntity.ok(jwt);
     }
 
+    @PostMapping("/logout")
+    public String logout(HttpServletResponse response) {
+        Cookie cookie = new Cookie("JWT", "");
+        cookie.setHttpOnly(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(0);
+
+        response.addCookie(cookie);
+        SecurityContextHolder.clearContext();
+        return "redirect:/login";
+    }
 }

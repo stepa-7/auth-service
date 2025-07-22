@@ -38,9 +38,23 @@ public class TokenFilter extends OncePerRequestFilter {
             if (headersAuth != null && headersAuth.startsWith("Bearer ")) {
                 jwt = headersAuth.substring(7);
             }
+            if (jwt == null && request.getCookies() != null) {
+                for (var cookie : request.getCookies()) {
+                    if ("JWT".equals(cookie.getName())) {
+                        jwt = cookie.getValue();
+                        break;
+                    }
+                }
+            }
+
             if (jwt != null) {
                 try {
                     login = jwtCore.getNameFromJwt(jwt);
+                    if (login != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                        userDetails = userDetailsService.loadUserByUsername(login);
+                        auth = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                        SecurityContextHolder.getContext().setAuthentication(auth);
+                    }
                 } catch (ExpiredJwtException e) {
                     logger.warn("JWT token expired: {}" + e.getMessage());
                     response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token expired");
@@ -49,11 +63,6 @@ public class TokenFilter extends OncePerRequestFilter {
                     logger.warn("Invalid JWT token: {}" + e.getMessage());
                     response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
                     return;
-                }
-                if (login != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    userDetails = userDetailsService.loadUserByUsername(login);
-                    auth = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                    SecurityContextHolder.getContext().setAuthentication(auth);
                 }
             }
         } catch (Exception e) {

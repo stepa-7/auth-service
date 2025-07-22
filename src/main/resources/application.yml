@@ -8,4 +8,4 @@ spring:
     driver-class-name: org.postgresql.Driver
 security:
   secret: n123aa4d89abcdef01c3bb6789abcdefxyz9876543210abcdeffedcba987654321
-  expireTimeMs: 60000
+  expireTimeMs: 120000

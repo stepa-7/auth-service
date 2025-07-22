@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="navbar">
+  <nav style="background-color: #f0f0f0; padding: 10px;">
+    <a th:href="@{/}">Главная</a> |
+    <a th:href="@{/login}">Войти</a> |
+    <a th:href="@{/register}">Регистрация</a> |
+    <a th:href="@{/profile}">Профиль</a> |
+    <a th:href="@{/admin/users}">Админка</a> |
+    <a th:href="@{/premium/dashboard}">Премиум</a>
+    <form th:action="@{/auth/logout}" method="post" style="display:inline;">
+      <button type="submit">Выйти</button>
+    </form>
+  </nav>
+  <hr/>
+</div>
+</body>
+</html>

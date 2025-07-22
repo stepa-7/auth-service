@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <title>Admin — Users</title>
+  <script>
+    async function updateRoles(userId) {
+      const checkboxes = document.querySelectorAll(`#roles-form-${userId} input[type=checkbox]`);
+      let roles = [];
+      checkboxes.forEach(cb => {
+        if(cb.checked) roles.push(cb.value);
+      });
+
+      const response = await fetch(`/user/${userId}/roles`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(roles)
+      });
+
+      if(response.ok) {
+        alert('Roles updated successfully');
+      } else {
+        alert('Error updating roles');
+      }
+    }
+  </script>
+</head>
+<body>
+<div th:replace="fragments/navbar :: navbar"></div>
+<h1>Users List (Admin)</h1>
+<table border="1">
+  <thead>
+  <tr>
+    <th>Login</th>
+    <th>Email</th>
+    <th>Roles</th>
+    <th>Update Roles</th>
+  </tr>
+  </thead>
+  <tbody>
+  <tr th:each="user : ${users}">
+    <td th:text="${user.login}">login</td>
+    <td th:text="${user.mail}">email</td>
+    <td>
+      <form th:id="'roles-form-' + ${user.id}"
+            th:onsubmit="|event.preventDefault(); updateRoles(${user.id});|">
+        <div th:each="role : ${allRoles}">
+          <label>
+            <input type="checkbox"
+                   th:value="${role.name()}"
+                   th:checked="${user.role.contains(role)}"/>
+            <span th:text="${role.name()}"></span>
+          </label><br/>
+        </div>
+        <button type="submit">Save</button>
+      </form>
+    </td>
+  </tr>
+  </tbody>
+</table>
+</body>
+</html>

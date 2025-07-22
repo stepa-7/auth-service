@@ -65,8 +65,10 @@ public class SecurityConfiguration {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers("/secured/user").fullyAuthenticated()
+                        .requestMatchers("/auth/**", "/login", "/register").permitAll()
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/premium/**").hasRole("PREMIUM_USER")
+                        .requestMatchers("/profile").fullyAuthenticated()
                         .anyRequest().permitAll())
                 .addFilterBefore(tokenFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();

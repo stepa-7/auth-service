@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><title>Error</title></head>
+    <body>
+    <div th:replace="fragments/navbar :: navbar"></div>
+        <h2>Ошибка</h2>
+        <p th:text="${status}">Код ошибки</p>
+        <p th:text="${error}">Сообщение</p>
+        <a th:href="@{/login}">Вернуться к входу</a>
+    </body>
+</html>

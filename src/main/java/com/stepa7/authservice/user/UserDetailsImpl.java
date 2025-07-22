@@ -3,11 +3,12 @@ package com.stepa7.authservice.user;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Data
 @AllArgsConstructor
@@ -16,7 +17,7 @@ public class UserDetailsImpl implements UserDetails {
     private String login;
     private String password;
     private String mail;
-    private Set<UserRole> role;
+    private Set<UserRole> roles;
 
     public static UserDetailsImpl build(User user) {
         return new UserDetailsImpl(
@@ -29,7 +30,9 @@ public class UserDetailsImpl implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of();
+        return roles.stream()
+                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.name()))
+                .collect(Collectors.toSet());
     }
 
     @Override
