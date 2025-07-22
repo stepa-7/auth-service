@@ -98,6 +98,14 @@
                     </annotationProcessorPaths>
                 </configuration>
             </plugin>
+
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>com.stepa7.authservice.AuthServiceApplication</mainClass>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 

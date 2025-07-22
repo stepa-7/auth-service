@@ -40,12 +40,12 @@ public class SecurityController {
     }
 
     @PostMapping("/signup")
-    ResponseEntity<?> signup(@ModelAttribute SignupRequest signupRequest) {
+    public String signup(@ModelAttribute SignupRequest signupRequest) {
         if (userRepository.existsUserByLogin(signupRequest.getLogin())) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Choose different login");
+            return "redirect:/signup?error=login_exists";
         }
         if (userRepository.existsUserByMail(signupRequest.getEmail())) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Choose different login");
+            return "redirect:/signup?error=email_exists";
         }
         String hashed = passwordEncoder.encode(signupRequest.getPassword());
         User user = new User();
@@ -58,8 +58,9 @@ public class SecurityController {
             user.setRole(signupRequest.getRoles());
         }
         userRepository.save(user);
-        return ResponseEntity.ok("Success");
+        return "redirect:/login?signup_success=true";
     }
+
 
     @PostMapping("/signin")
     public String signin(@ModelAttribute SigninRequest signinRequest, HttpServletResponse response) {
