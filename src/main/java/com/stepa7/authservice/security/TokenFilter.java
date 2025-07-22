@@ -1,6 +1,7 @@
-package com.stepa7.authservice;
+package com.stepa7.authservice.security;
 
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -41,7 +42,13 @@ public class TokenFilter extends OncePerRequestFilter {
                 try {
                     login = jwtCore.getNameFromJwt(jwt);
                 } catch (ExpiredJwtException e) {
-                    // TODO
+                    logger.warn("JWT token expired: {}" + e.getMessage());
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token expired");
+                    return;
+                } catch (JwtException e) {
+                    logger.warn("Invalid JWT token: {}" + e.getMessage());
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
+                    return;
                 }
                 if (login != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                     userDetails = userDetailsService.loadUserByUsername(login);
@@ -50,7 +57,9 @@ public class TokenFilter extends OncePerRequestFilter {
                 }
             }
         } catch (Exception e) {
-            // TODO
+            logger.error("Error while filtering JWT: {}" + e.getMessage());
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+            return;
         }
         filterChain.doFilter(request, response);
     }

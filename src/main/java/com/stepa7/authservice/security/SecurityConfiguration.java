@@ -1,4 +1,4 @@
-package com.stepa7.authservice;
+package com.stepa7.authservice.security;
 
 import lombok.NoArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,12 +25,10 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableWebSecurity
 @NoArgsConstructor
 public class SecurityConfiguration {
-    private UserService userService;
     private TokenFilter tokenFilter;
 
     @Autowired
-    public SecurityConfiguration(UserService userService, TokenFilter tokenFilter) {
-        this.userService = userService;
+    public SecurityConfiguration(TokenFilter tokenFilter) {
         this.tokenFilter = tokenFilter;
     }
 
@@ -43,12 +41,6 @@ public class SecurityConfiguration {
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
     }
-
-//    @Bean
-//    public AuthenticationManagerBuilder authenticationManagerBuilder(AuthenticationManagerBuilder authenticationManagerBuilder) throws Exception {
-//        authenticationManagerBuilder.userDetailsService(userService).passwordEncoder(passwordEncoder());
-//        return authenticationManagerBuilder;
-//    }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {

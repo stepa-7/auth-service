@@ -1,4 +1,4 @@
-package com.stepa7.authservice;
+package com.stepa7.authservice.request;
 
 import lombok.Data;
 

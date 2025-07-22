@@ -1,4 +1,4 @@
-package com.stepa7.authservice;
+package com.stepa7.authservice.user;
 
 import jakarta.persistence.*;
 import lombok.Data;

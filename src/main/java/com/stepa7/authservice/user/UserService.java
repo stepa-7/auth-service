@@ -1,4 +1,4 @@
-package com.stepa7.authservice;
+package com.stepa7.authservice.user;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;

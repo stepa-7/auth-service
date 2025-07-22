@@ -1,5 +1,10 @@
-package com.stepa7.authservice;
+package com.stepa7.authservice.controller;
 
+import com.stepa7.authservice.request.SigninRequest;
+import com.stepa7.authservice.request.SignupRequest;
+import com.stepa7.authservice.security.JwtCore;
+import com.stepa7.authservice.user.User;
+import com.stepa7.authservice.user.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

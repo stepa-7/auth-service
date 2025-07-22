@@ -1,5 +1,6 @@
-package com.stepa7.authservice;
+package com.stepa7.authservice.security;
 
+import com.stepa7.authservice.user.UserDetailsImpl;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,7 +22,7 @@ public class JwtCore {
                 .subject(userDetails.getLogin())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + Long.parseLong(expireTimeMs)))
-                .signWith(SignatureAlgorithm.HS256,secret)
+                .signWith(SignatureAlgorithm.HS256, secret)
                 .compact();
     }
 

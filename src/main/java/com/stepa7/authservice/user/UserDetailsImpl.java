@@ -1,4 +1,4 @@
-package com.stepa7.authservice;
+package com.stepa7.authservice.user;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -24,7 +24,7 @@ public class UserDetailsImpl implements UserDetails {
                 user.getLogin(),
                 user.getPassword(),
                 user.getMail(),
-                user.getRole() );
+                user.getRole());
     }
 
     @Override
