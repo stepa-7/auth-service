@@ -1,27 +1,13 @@
 package com.stepa7.authservice.controller;
 
-import org.springframework.stereotype.Controller;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@Controller
+@RestController
 public class ViewController {
-    @GetMapping("/login")
-    public String loginPage() {
-        return "login";
-    }
-
-    @GetMapping("/register")
-    public String registerPage() {
-        return "register";
-    }
-
     @GetMapping("/profile")
-    public String profilePage() {
-        return "profile";
-    }
-
-    @GetMapping("/")
-    public String home() {
-        return "home";
+    public ResponseEntity<?> profilePage() {
+        return ResponseEntity.ok().body("Authorized");
     }
 }

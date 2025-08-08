@@ -68,7 +68,7 @@ public class SecurityConfiguration {
                         .requestMatchers("/auth/**", "/login", "/register").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/premium/**").hasRole("PREMIUM_USER")
-                        .requestMatchers("/profile").fullyAuthenticated()
+                        .requestMatchers("/profile").authenticated()
                         .anyRequest().permitAll())
                 .addFilterBefore(tokenFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();

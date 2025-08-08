@@ -7,16 +7,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Set;
 
-@Controller
+@RestController
 public class AdminController {
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
     @Autowired
     public AdminController(UserRepository userRepository) {
@@ -25,10 +23,8 @@ public class AdminController {
 
     @GetMapping("/admin/users")
     @PreAuthorize("hasRole('ADMIN')")
-    public String getUsersPage(org.springframework.ui.Model model) {
-        model.addAttribute("users", userRepository.findAll());
-        model.addAttribute("allRoles", UserRole.values());
-        return "admin/users";
+    public List<User> getUsers() {
+        return userRepository.findAll();
     }
 
     @PutMapping("/user/{id}/roles")
@@ -39,5 +35,4 @@ public class AdminController {
         userRepository.save(user);
         return ResponseEntity.ok("Roles updated");
     }
-
 }

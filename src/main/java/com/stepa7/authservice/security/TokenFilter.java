@@ -38,14 +38,6 @@ public class TokenFilter extends OncePerRequestFilter {
             if (headersAuth != null && headersAuth.startsWith("Bearer ")) {
                 jwt = headersAuth.substring(7);
             }
-            if (jwt == null && request.getCookies() != null) {
-                for (var cookie : request.getCookies()) {
-                    if ("JWT".equals(cookie.getName())) {
-                        jwt = cookie.getValue();
-                        break;
-                    }
-                }
-            }
 
             if (jwt != null) {
                 try {

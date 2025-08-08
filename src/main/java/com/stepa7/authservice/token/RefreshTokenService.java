@@ -6,7 +6,11 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.HexFormat;
 import java.util.UUID;
 
 @Service
@@ -23,12 +27,31 @@ public class RefreshTokenService {
         this.userRepository = userRepository;
     }
 
-    public RefreshToken createRefreshToken(User user) {
+    public String createRefreshToken(User user) {
+        String plainToken = UUID.randomUUID().toString();
+        String hash = sha256(plainToken);
+
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setUser(user);
         refreshToken.setExpiryDate(Instant.now().plusMillis(refreshTokenDurationMs));
-        refreshToken.setToken(UUID.randomUUID().toString());
-        return refreshTokenRepository.save(refreshToken);
+        refreshToken.setTokenHash(hash);
+        refreshTokenRepository.save(refreshToken);
+
+        return plainToken;
+    }
+
+    private String sha256(String input) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] digest = md.digest(input.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public String hashPlain(String plain) {
+        return sha256(plain);
     }
 
     public boolean isTokenExpired(RefreshToken token) {
@@ -36,8 +59,8 @@ public class RefreshTokenService {
     }
 
     @Transactional
-    public void deleteByToken(String token) {
-        refreshTokenRepository.deleteByToken(token);
+    public void deleteByTokenHash(String token) {
+        refreshTokenRepository.deleteByTokenHash(token);
     }
 
     @Transactional
@@ -46,6 +69,6 @@ public class RefreshTokenService {
     }
 
     public RefreshToken findByToken(String token) {
-        return refreshTokenRepository.findByToken(token).orElse(null);
+        return refreshTokenRepository.findByTokenHash(token).orElse(null);
     }
 }

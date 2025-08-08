@@ -12,7 +12,9 @@ import com.stepa7.authservice.user.UserRole;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -20,23 +22,24 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
-import jakarta.servlet.http.Cookie;
 
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
-@Controller
+@RestController
 @RequestMapping("/auth")
 public class SecurityController {
-    private UserRepository userRepository;
-    private AuthenticationManager authenticationManager;
-    private PasswordEncoder passwordEncoder;
-    private JwtCore jwtCore;
-    private RefreshTokenService refreshTokenService;
+
+    private final UserRepository userRepository;
+    private final AuthenticationManager authenticationManager;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtCore jwtCore;
+    private final RefreshTokenService refreshTokenService;
     @Value("${jwt.refreshExpirationMs:86400000}")
-    private int refreshTokenDurationMs;
+    private long refreshTokenDurationMs;
 
     @Autowired
     public SecurityController(UserRepository userRepository, AuthenticationManager authenticationManager, PasswordEncoder passwordEncoder, JwtCore jwtCore, RefreshTokenService refreshTokenService) {
@@ -48,12 +51,12 @@ public class SecurityController {
     }
 
     @PostMapping("/signup")
-    public String signup(@ModelAttribute SignupRequest signupRequest) {
+    public ResponseEntity<?> signup(@RequestBody SignupRequest signupRequest) {
         if (userRepository.existsUserByLogin(signupRequest.getLogin())) {
-            return "redirect:/signup?error=login_exists";
+            return ResponseEntity.badRequest().body("login_exists");
         }
         if (userRepository.existsUserByMail(signupRequest.getEmail())) {
-            return "redirect:/signup?error=email_exists";
+            return ResponseEntity.badRequest().body("email_exists");
         }
         String hashed = passwordEncoder.encode(signupRequest.getPassword());
         User user = new User();
@@ -66,12 +69,12 @@ public class SecurityController {
             user.setRole(signupRequest.getRoles());
         }
         userRepository.save(user);
-        return "redirect:/login?signup_success=true";
+        return ResponseEntity.ok(Map.of("signup", "success"));
     }
 
 
     @PostMapping("/signin")
-    public String signin(@ModelAttribute SigninRequest signinRequest, HttpServletResponse response) {
+    public ResponseEntity<?> signin(@RequestBody SigninRequest signinRequest, HttpServletResponse response) {
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(signinRequest.getLogin(), signinRequest.getPassword())
@@ -81,23 +84,25 @@ public class SecurityController {
             User user = userRepository.findUserByLogin(signinRequest.getLogin()).orElseThrow();
             String accessToken = jwtCore.generateToken(authentication);
 
-            RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
+            String plainRefresh = refreshTokenService.createRefreshToken(user);
+            ResponseCookie refreshCookie = ResponseCookie.from("REFRESH_TOKEN", plainRefresh)
+                    .secure(true)
+                    .httpOnly(true)
+                    .path("/")
+                    .sameSite("Strict")
+                    .maxAge(refreshTokenDurationMs / 1000)
+                    .build();
 
-            Cookie accessCookie = new Cookie("JWT", accessToken);
-            accessCookie.setHttpOnly(true);
-            accessCookie.setPath("/");
-            accessCookie.setMaxAge(60);
-            response.addCookie(accessCookie);
+            response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
-            Cookie refreshCookie = new Cookie("REFRESH_TOKEN", refreshToken.getToken());
-            refreshCookie.setHttpOnly(true);
-            refreshCookie.setPath("/");
-            refreshCookie.setMaxAge((int) (refreshTokenDurationMs));
-            response.addCookie(refreshCookie);
+            Map<String, Object> body = new HashMap<>();
+            body.put("accessToken", accessToken);
+            body.put("tokenType", "Bearer");
+            body.put("expiresIn", jwtCore.getExpireTimeMs());
 
-            return "redirect:/profile";
+            return ResponseEntity.ok(body);
         } catch (BadCredentialsException e) {
-            return "redirect:/login?error=true";
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("invalid_credentials");
         }
     }
 
@@ -108,45 +113,58 @@ public class SecurityController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Refresh token is missing");
         }
 
-        RefreshToken refreshToken = refreshTokenService.findByToken(refreshTokenCookie);
+        String hash = refreshTokenService.hashPlain(refreshTokenCookie);
+        RefreshToken refreshToken = refreshTokenService.findByToken(hash);
         if (refreshToken == null || refreshTokenService.isTokenExpired(refreshToken)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Refresh token is invalid or expired");
+            if (refreshToken != null) {
+                refreshTokenService.deleteByTokenHash(hash);
+            }
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("refresh_invalid_or_expired");
         }
 
         User user = refreshToken.getUser();
+        refreshTokenService.deleteByTokenHash(hash);
+        String newPlainRefresh = refreshTokenService.createRefreshToken(user);
+
+        ResponseCookie refreshCookie = ResponseCookie.from("REFRESH_TOKEN", newPlainRefresh)
+                .secure(true)
+                .httpOnly(true)
+                .path("/")
+                .sameSite("Strict")
+                .maxAge(refreshTokenDurationMs / 1000)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+
         UserDetailsImpl userDetails = UserDetailsImpl.build(user);
         Authentication authentication = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
         String newAccessToken = jwtCore.generateToken(authentication);
 
-        Cookie newAccessCookie = new Cookie("JWT", newAccessToken);
-        newAccessCookie.setHttpOnly(true);
-        newAccessCookie.setPath("/");
-        newAccessCookie.setMaxAge(120);
-        response.addCookie(newAccessCookie);
+        Map<String, Object> body = new HashMap<>();
+        body.put("accessToken", newAccessToken);
+        body.put("tokenType", "Bearer");
+        body.put("expiresIn", jwtCore.getExpireTimeMs());
 
-        return ResponseEntity.ok("Access token refreshed");
+        return ResponseEntity.ok(body);
     }
 
     @PostMapping("/logout")
-    public String logout(@CookieValue(name = "REFRESH_TOKEN", required = false) String refreshTokenCookie,
+    public ResponseEntity<?> logout(@CookieValue(name = "REFRESH_TOKEN", required = false) String refreshTokenCookie,
                                     HttpServletResponse response) {
         if (refreshTokenCookie != null) {
-            refreshTokenService.deleteByToken(refreshTokenCookie);
+            String hash = refreshTokenService.hashPlain(refreshTokenCookie);
+            refreshTokenService.deleteByTokenHash(hash);
         }
 
-        Cookie accessCookie = new Cookie("JWT", "");
-        accessCookie.setHttpOnly(true);
-        accessCookie.setPath("/");
-        accessCookie.setMaxAge(0);
-        response.addCookie(accessCookie);
-
-        Cookie refreshCookie = new Cookie("REFRESH_TOKEN", "");
-        refreshCookie.setHttpOnly(true);
-        refreshCookie.setPath("/");
-        refreshCookie.setMaxAge(0);
-        response.addCookie(refreshCookie);
+        ResponseCookie refreshCookie = ResponseCookie.from("REFRESH_TOKEN", "")
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .maxAge(0)
+                .sameSite("Strict")
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
         SecurityContextHolder.clearContext();
-        return "redirect:/login";
+        return ResponseEntity.ok(Map.of("logout", "ok"));
     }
 }
